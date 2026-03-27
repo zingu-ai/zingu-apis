@@ -175,7 +175,7 @@ class APIClient:
             f"Use .tools() to see available endpoints."
         )
 
-    def _make_endpoint_method(self, path_template: str, method: str):
+    def _make_endpoint_method(self, path_template: str, method: str, endpoint_meta=None):
         """Create a bound method for an endpoint."""
 
         def endpoint_method(*args, **kwargs):
@@ -219,6 +219,33 @@ class APIClient:
         method_name = method_name.replace("{", "").replace("}", "")
         endpoint_method.__name__ = self._normalize_endpoint_name(path_template)
         endpoint_method.__doc__ = f'Call {method} {path_template}'
+
+        # Attach info function
+        def info():
+            """Return metadata about this endpoint."""
+            ep = endpoint_meta
+            if ep is None:
+                # Find the endpoint meta
+                for _k, e in self.meta.endpoints.items():
+                    if e.path == path_template and e.method == method:
+                        ep = e
+                        break
+            if ep is None:
+                return {}
+
+            return {
+                'method': ep.method,
+                'path': ep.path,
+                'description': ep.description,
+                'response_content_type': ep.response_content_type,
+                'pagination': {
+                    'style': ep.pagination.style if ep.pagination else None,
+                    'results_key': ep.pagination.results_key if ep.pagination else None,
+                } if ep.pagination else None,
+                'parameters': ep.parameters,
+            }
+
+        endpoint_method.info = info
         return endpoint_method
 
     def tools(self) -> dict[str, dict[str, Any]]:

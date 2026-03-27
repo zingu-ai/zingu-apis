@@ -95,6 +95,25 @@ params = api.get_method_parameters("events/month/day")
 endpoints = api.tools()
 ```
 
+### Endpoint Metadata
+
+Each endpoint method has a `.info()` function that returns metadata:
+
+```python
+method = api.get_method("events/month/day")
+info = method.info()
+
+print(info)
+# {
+#     'method': 'GET',
+#     'path': '/events/{month}/{day}',
+#     'description': 'Get historical events for a specific date',
+#     'response_content_type': 'application/json',
+#     'pagination': {'style': 'page_number', 'results_key': 'results'},
+#     'parameters': None  # or dict of parameter metadata
+# }
+```
+
 ### Configuration
 
 ```python
