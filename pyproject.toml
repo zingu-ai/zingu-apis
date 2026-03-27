@@ -11,6 +11,9 @@ license = "MIT"
 requires-python = ">=3.10"
 dependencies = ["requests>=2.28"]
 
+[project.scripts]
+zapi = "zingu_apis.cli:main"
+
 [project.urls]
 Homepage = "https://zingu.dev"
 

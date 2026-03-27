@@ -13,7 +13,7 @@ from ._meta import configure, fetch_meta, search
 from ._prune import PRUNE_PRINT, PRUNE_COMPACT, PRUNE_SAFE, PRUNE_NONE, PruneProfile, prune
 
 ZINGU_WEB_HOME_URL: str = os.environ.get("ZINGU_WEB_HOME_URL", "https://zingu.ai")
-ZINGU_API_BASE_URL: str = os.environ.get("ZINGU_API_BASE_URL", "https://api.zingu.ai")
+ZINGU_API_BASE_URL: str = os.environ.get("ZINGU_API_BASE_URL", "https://zingu.ai/api")
 
 __all__ = [
     "api", "fetch", "search", "configure", "APIClient", "Endpoint", "Parameter", "FetchError",

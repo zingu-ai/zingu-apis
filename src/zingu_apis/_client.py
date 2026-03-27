@@ -390,7 +390,7 @@ them as a list of dicts with name and type information.
         # Fetch tutorial slugs from the metadata API
         tutorial_urls = [tutorials_base]
         try:
-            url = f"{_ZINGU_BASE}/api/tutorials/{self.slug}"
+            url = f"{_ZINGU_BASE}/tutorials/{self.slug}"
             headers = {}
             key = _get_api_key()
             if key:

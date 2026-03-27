@@ -13,7 +13,7 @@ from ._types import APIMeta, EndpointMeta, PaginationConfig
 logger = logging.getLogger("zingu_apis")
 
 # Default: production Zingu public API
-_ZINGU_BASE = "https://api.zingu.ai"
+_ZINGU_BASE = "https://zingu.ai/api"
 _ZINGU_API_KEY: str | None = None
 
 
@@ -108,7 +108,7 @@ def search(query: str, limit: int = 10) -> list[dict]:
         if key:
             headers["Authorization"] = f"Bearer {key}"
 
-        url = f"{_ZINGU_BASE}/api/search"
+        url = f"{_ZINGU_BASE}/search"
         resp = requests.get(url, headers=headers, params={"q": query, "limit": limit}, timeout=5)
         resp.raise_for_status()
         data = resp.json()
@@ -136,7 +136,7 @@ def fetch_examples(slug: str, endpoint: str) -> list[dict]:
         if key:
             headers["Authorization"] = f"Bearer {key}"
 
-        url = f"{_ZINGU_BASE}/api/examples/{slug}"
+        url = f"{_ZINGU_BASE}/examples/{slug}"
         resp = requests.get(url, headers=headers, params={"endpoint": endpoint}, timeout=5)
         resp.raise_for_status()
         data = resp.json()
@@ -172,7 +172,7 @@ def fetch_meta(slug: str) -> APIMeta:
         if key:
             headers["Authorization"] = f"Bearer {key}"
 
-        url = f"{_ZINGU_BASE}/api/meta/{slug}"
+        url = f"{_ZINGU_BASE}/meta/{slug}"
         resp = requests.get(url, headers=headers, timeout=5)
         resp.raise_for_status()
         data = resp.json()
