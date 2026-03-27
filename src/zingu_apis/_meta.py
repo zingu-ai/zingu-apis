@@ -12,8 +12,8 @@ from ._types import APIMeta, EndpointMeta, PaginationConfig
 
 logger = logging.getLogger("zingu_apis")
 
-# Default: local robustapi-public instance
-_ZINGU_BASE = "http://localhost:5002"
+# Default: production Zingu public API
+_ZINGU_BASE = "https://api.zingu.ai"
 _ZINGU_API_KEY: str | None = None
 
 

@@ -133,6 +133,94 @@ class APIClient:
         self._auth = resolve_auth(self.slug, self.meta.auth_type, key=key)
         self._parser = parser  # callable(text) -> parsed data
 
+    def _normalize_endpoint_name(self, path: str) -> str:
+        """Convert endpoint path to valid Python identifier.
+
+        Examples:
+            "/events/{month}/{day}" -> "events_month_day"
+            "/api/v1.0/users" -> "api_v1_0_users"
+            "/data/csv,json" -> "data_csv_json"
+        """
+        import re
+
+        # Remove path parameters (braces)
+        name = path.replace("{", "").replace("}", "")
+
+        # Replace any non-alphanumeric character with underscore
+        name = re.sub(r'[^a-zA-Z0-9]+', '_', name)
+
+        # Remove leading/trailing underscores
+        name = name.strip("_")
+
+        # Collapse multiple underscores
+        name = re.sub(r'_+', '_', name)
+
+        return name or "endpoint"
+
+    def __getattr__(self, name: str):
+        """Dynamically create endpoint methods.
+
+        Enables calling endpoints as methods with parameters:
+            api.events_month_day(month="july", day=4, max_items=5)
+        """
+        # Check if this name matches an endpoint short name
+        for _key, ep in self.meta.endpoints.items():
+            short = self._normalize_endpoint_name(ep.path) or ep.method.lower()
+            if short == name:
+                return self._make_endpoint_method(ep.path, ep.method)
+
+        # Not a valid endpoint
+        raise AttributeError(
+            f"'{self.__class__.__name__}' has no attribute '{name}'. "
+            f"Use .tools() to see available endpoints."
+        )
+
+    def _make_endpoint_method(self, path_template: str, method: str):
+        """Create a bound method for an endpoint."""
+
+        def endpoint_method(*args, **kwargs):
+            # Extract fetch options from kwargs
+            max_items = kwargs.pop('max_items', None)
+            max_pages = kwargs.pop('max_pages', None)
+            max_chars = kwargs.pop('max_chars', None)
+            truncation = kwargs.pop('truncation', None)
+            prune_profile = kwargs.pop('prune_profile', None)
+            strict = kwargs.pop('strict', False)
+            max_retries = kwargs.pop('max_retries', None)
+
+            # Build path by substituting path parameters
+            path = path_template
+            for key, value in kwargs.items():
+                placeholder = f'{{{key}}}'
+                if placeholder in path:
+                    path = path.replace(placeholder, str(value))
+
+            # Call fetch with remaining params as query params
+            fetch_kwargs = {}
+            if max_items is not None:
+                fetch_kwargs['max_items'] = max_items
+            if max_pages is not None:
+                fetch_kwargs['max_pages'] = max_pages
+            if max_chars is not None:
+                fetch_kwargs['max_chars'] = max_chars
+            if truncation is not None:
+                fetch_kwargs['truncation'] = truncation
+            if prune_profile is not None:
+                fetch_kwargs['prune_profile'] = prune_profile
+            if strict:
+                fetch_kwargs['strict'] = strict
+            if max_retries is not None:
+                fetch_kwargs['max_retries'] = max_retries
+
+            return self.fetch(path, **fetch_kwargs)
+
+        # Create clean method name without braces
+        method_name = path_template.strip("/").replace("/", "_") or method.lower()
+        method_name = method_name.replace("{", "").replace("}", "")
+        endpoint_method.__name__ = self._normalize_endpoint_name(path_template)
+        endpoint_method.__doc__ = f'Call {method} {path_template}'
+        return endpoint_method
+
     def tools(self) -> dict[str, dict[str, Any]]:
         """Return a dict of available endpoints keyed by short name.
 
@@ -142,7 +230,7 @@ class APIClient:
         """
         result: dict[str, dict[str, Any]] = {}
         for _key, ep in self.meta.endpoints.items():
-            short = ep.path.strip("/").replace("/", "_") or ep.method.lower()
+            short = self._normalize_endpoint_name(ep.path) or ep.method.lower()
             entry: dict[str, Any] = {
                 "method": ep.method,
                 "path": ep.path,
@@ -153,6 +241,90 @@ class APIClient:
                 entry["parameters"] = ep.parameters
             result[short] = entry
         return result
+
+    def help(self) -> str:
+        """Return a help string showing available endpoints as methods."""
+        lines = [f"Available endpoints for '{self.slug}':", ""]
+        for name, info in self.tools().items():
+            path = info["path"]
+            method = info["method"]
+            desc = info.get("description", "")
+            # Show method signature
+            params = []
+            if "{" in path:
+                # Extract path parameters
+                import re
+                params = re.findall(r'\{(\w+)\}', path)
+            if params:
+                param_str = ", ".join([f"{p}=..." for p in params])
+                lines.append(f"  api.{name}({param_str})")
+            else:
+                lines.append(f"  api.{name}()")
+            lines.append(f"    → {method} {path}")
+            if desc:
+                lines.append(f"    {desc}")
+            lines.append("")
+        return "\n".join(lines)
+
+    def get_method_name(self, path: str) -> str | None:
+        """Return the method name for a given endpoint path.
+
+        Example:
+            >>> api.get_method_name("/events/{month}/{day}")
+            'events_month_day'
+            >>> api.get_method_name("/today/events")
+            'today_events'
+        """
+        # Normalize the input path
+        normalized = self._normalize_endpoint_name(path)
+
+        # Check if this matches any endpoint
+        for _key, ep in self.meta.endpoints.items():
+            if self._normalize_endpoint_name(ep.path) == normalized:
+                return normalized
+        return None
+
+    def get_method(self, path: str):
+        """Return the callable method for a given endpoint path.
+
+        Example:
+            >>> method = api.get_method("/events/{month}/{day}")
+            >>> method(month="july", day=4, max_items=5)
+        """
+        normalized = self._normalize_endpoint_name(path)
+
+        for _key, ep in self.meta.endpoints.items():
+            if self._normalize_endpoint_name(ep.path) == normalized:
+                return self._make_endpoint_method(ep.path, ep.method)
+
+        raise ValueError(f"No endpoint found for path: {path}")
+
+    def get_method_parameters(self, path: str) -> list[dict[str, Any]]:
+        """Return the parameters for a given endpoint path.
+
+        Extracts path parameters from the endpoint template and returns
+them as a list of dicts with name and type information.
+
+        Example:
+            >>> api.get_method_parameters("/events/{month}/{day}")
+            [{"name": "month", "type": "string"}, {"name": "day", "type": "string"}]
+            >>> api.get_method_parameters("/today/events")
+            []
+        """
+        import re
+
+        normalized = self._normalize_endpoint_name(path)
+        result: list[dict[str, Any]] = []
+
+        for _key, ep in self.meta.endpoints.items():
+            if self._normalize_endpoint_name(ep.path) == normalized:
+                # Extract path parameters from template
+                params = re.findall(r'\{(\w+)\}', ep.path)
+                for param in params:
+                    result.append({"name": param, "type": "string"})
+                return result
+
+        return []
 
     def info(self) -> dict[str, Any]:
         """Return a dict of API-level metadata.
@@ -324,6 +496,7 @@ class APIClient:
         self,
         path: str,
         *,
+        params: dict[str, Any] | list[Any] | None = None,
         max_items: int | None = None,
         max_pages: int = _DEFAULT_MAX_PAGES,
         max_chars: int = _DEFAULT_MAX_CHARS,
@@ -334,7 +507,7 @@ class APIClient:
         strict: bool = False,
         page_delay: float | None = None,
         max_retries: int = _DEFAULT_MAX_RETRIES,
-        **params: Any,
+        **query_params: Any,
     ) -> FetchResult:
         """Fetch all items from an endpoint, handling pagination automatically.
 
@@ -351,7 +524,9 @@ class APIClient:
         Full dict access: result["data"], result["analytics"]
 
         Args:
-            path: Endpoint path (e.g. "/today/events/").
+            path: Endpoint path (e.g. "/today/events/" or "/events/{month}/{day}").
+            params: Optional dict of path parameters to substitute into the path
+                (e.g. {"month": "july", "day": 4} for "/events/{month}/{day}").
             max_items: Stop after this many items. None = no item limit.
             max_pages: Stop after this many pages (default 10).
             max_chars: Truncate individual items exceeding this char count (default 1M).
@@ -363,8 +538,22 @@ class APIClient:
             page_delay: Seconds to pause between page requests. Default: 0.2s for
                 authenticated APIs, 1.0s for unauthenticated (be polite to free APIs).
             max_retries: Retries for transient errors — 429, 5xx (default 2).
-            **params: Extra query parameters passed to the API.
+            **query_params: Extra query parameters passed to the API.
         """
+        # Substitute path parameters if provided
+        if params:
+            if isinstance(params, (list, tuple)):
+                # Positional params: extract placeholders in order
+                import re
+                placeholders = re.findall(r"\{(\w+)\}", path)
+                for i, placeholder in enumerate(placeholders):
+                    if i < len(params):
+                        path = path.replace(f"{{{placeholder}}}", str(params[i]))
+            else:
+                # Dict params: named substitution
+                for key, value in params.items():
+                    path = path.replace(f"{{{key}}}", str(value))
+
         ep = self.meta.find_endpoint(path)
         config = ep.pagination if ep else None
         if config is None:
@@ -389,7 +578,7 @@ class APIClient:
         try:
             # First page
             t_page = time.monotonic()
-            req_params, req_headers = self._prepare_request(params)
+            req_params, req_headers = self._prepare_request(query_params)
             resp = _retry_get(self._session, url, max_retries, params=req_params, headers=req_headers)
             resp.raise_for_status()
             page_timings.append(time.monotonic() - t_page)
