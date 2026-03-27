@@ -71,3 +71,7 @@ result = api.fetch("endpoint", parser=json5.loads)
 ```
 
 All API calls go directly to the target API — Zingu is only consulted for configuration metadata.
+
+## Documentation
+
+See [`docs/ZINGU-APIS-DOCUMENTATION.md`](docs/ZINGU-APIS-DOCUMENTATION.md) for complete API reference and usage examples.
