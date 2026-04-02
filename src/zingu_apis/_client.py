@@ -212,7 +212,7 @@ class APIClient:
             if max_retries is not None:
                 fetch_kwargs['max_retries'] = max_retries
 
-            return self.fetch(path, **fetch_kwargs)
+            return self.call(path, **fetch_kwargs)
 
         # Create clean method name without braces
         method_name = path_template.strip("/").replace("/", "_") or method.lower()
@@ -519,7 +519,7 @@ them as a list of dicts with name and type information.
         resp.raise_for_status()
         return resp.content
 
-    def fetch(
+    def call(
         self,
         path: str,
         *,
@@ -536,7 +536,7 @@ them as a list of dicts with name and type information.
         max_retries: int = _DEFAULT_MAX_RETRIES,
         **query_params: Any,
     ) -> FetchResult:
-        """Fetch all items from an endpoint, handling pagination automatically.
+        """Call an API endpoint, handling pagination automatically.
 
         Returns a FetchResult (dict subclass) with:
             data: list of parsed items (post-truncation and pruning)
@@ -696,3 +696,6 @@ them as a list of dicts with name and type information.
             raise FetchError(errors, result)
 
         return result
+
+    # Backwards-compatible alias
+    fetch = call

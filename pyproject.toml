@@ -9,10 +9,11 @@ description = "Pagination-aware API client powered by Zingu metadata"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
-dependencies = ["requests>=2.28"]
+dependencies = ["requests>=2.28", "mcp>=1.0.0"]
 
 [project.scripts]
 zapi = "zingu_apis.cli:main"
+zingu-mcp = "zingu_apis.mcp_server:cli_main"
 
 [project.urls]
 Homepage = "https://zingu.dev"

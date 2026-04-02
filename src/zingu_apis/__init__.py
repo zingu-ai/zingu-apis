@@ -16,7 +16,7 @@ ZINGU_WEB_HOME_URL: str = os.environ.get("ZINGU_WEB_HOME_URL", "https://zingu.ai
 ZINGU_API_BASE_URL: str = os.environ.get("ZINGU_API_BASE_URL", "https://zingu.ai/api")
 
 __all__ = [
-    "api", "fetch", "search", "configure", "APIClient", "Endpoint", "Parameter", "FetchError",
+    "api", "call", "fetch", "search", "configure", "APIClient", "Endpoint", "Parameter", "FetchError",
     "prune", "PruneProfile", "PRUNE_PRINT", "PRUNE_COMPACT", "PRUNE_SAFE", "PRUNE_NONE",
     "ZINGU_WEB_HOME_URL", "ZINGU_API_BASE_URL",
 ]
@@ -31,14 +31,14 @@ def api(slug: str, key: str | None = None, parser: Any | None = None) -> APIClie
             (ZINGU_KEY_{SLUG}) and ~/.config/zingu/auth.json.
 
     >>> client = zingu_apis.api("dayinhistory.dev:day-in-history-api")
-    >>> result = client.fetch("/today/events/")
+    >>> result = client.call("/today/events/")
     >>> for event in result["data"]:
     ...     print(event["title"])
     """
     return APIClient(slug, key=key, parser=parser)
 
 
-def fetch(
+def call(
     slug: str,
     path: str,
     *,
@@ -53,16 +53,16 @@ def fetch(
     strict: bool = False,
     **params: Any,
 ) -> dict:
-    """Convenience: fetch all items from an endpoint in one call.
+    """Convenience: call an API endpoint in one shot.
 
     Returns {"data": [...], "content": "...", "analytics": {...}, "warnings": [...], "errors": [...]}.
 
-    >>> result = zingu_apis.fetch("dayinhistory.dev:day-in-history-api", "/today/events/")
+    >>> result = zingu_apis.call("dayinhistory.dev:day-in-history-api", "/today/events/")
     >>> for event in result["data"]:
     ...     print(event["title"])
     """
     client = APIClient(slug, key=key, parser=parser)
-    return client.fetch(
+    return client.call(
         path,
         max_items=max_items,
         max_pages=max_pages,
@@ -73,3 +73,7 @@ def fetch(
         strict=strict,
         **params,
     )
+
+
+# Backwards-compatible alias
+fetch = call

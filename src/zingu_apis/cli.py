@@ -293,12 +293,12 @@ def cmd_call(args: argparse.Namespace) -> int:
         else:
             # Path-based call — separate path params from query params
             # Params matching {placeholders} in the path go as path params,
-            # everything else goes as query params (**kwargs to fetch).
+            # everything else goes as query params.
             import re
             placeholders = set(re.findall(r"\{(\w+)\}", method_or_path))
             path_params = {k: v for k, v in params.items() if k in placeholders}
             query_params = {k: v for k, v in params.items() if k not in placeholders}
-            result = client.fetch(
+            result = client.call(
                 method_or_path,
                 params=path_params or None,
                 **query_params,
@@ -336,7 +336,7 @@ def _url_or_curl(client: zingu_apis.APIClient, method_or_path: str, params: dict
         path = method_or_path
 
     ep = client.endpoint(path)
-    url = ep.fetch_url(params or None)
+    url = ep.call_url(params or None)
 
     if not curl:
         print(url)

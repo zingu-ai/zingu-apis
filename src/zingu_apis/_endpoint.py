@@ -133,8 +133,8 @@ class Endpoint:
                 "Use api.endpoint(...) to get a fetchable Endpoint."
             )
 
-    def fetch(self, api_params: dict[str, Any] | None = None, **kwargs: Any) -> Any:
-        """Fetch data from this endpoint.
+    def call(self, api_params: dict[str, Any] | None = None, **kwargs: Any) -> Any:
+        """Call this endpoint.
 
         Args:
             api_params: Dict of API parameters — path placeholders are substituted,
@@ -147,22 +147,25 @@ class Endpoint:
 
             ep = api.endpoint("users/{country}/{id}")
             ep.limit = 10
-            result = ep.fetch({"country": "germany", "id": 123}, max_items=5)
+            result = ep.call({"country": "germany", "id": 123}, max_items=5)
         """
         self._require_client()
         path, query_params = self._resolve(api_params)
-        return self._client.fetch(path, **kwargs, **query_params)
+        return self._client.call(path, **kwargs, **query_params)
 
-    def fetch_url(self, api_params: dict[str, Any] | None = None) -> str:
+    # Backwards-compatible alias
+    fetch = call
+
+    def call_url(self, api_params: dict[str, Any] | None = None) -> str:
         """Build the full curl-ready URL for this endpoint.
 
-        Same param merging as fetch(). Auth params are included automatically.
+        Same param merging as call(). Auth params are included automatically.
 
         Example::
 
             ep = api.endpoint("users/{country}/{id}")
             ep.limit = 10
-            url = ep.fetch_url({"country": "germany", "id": 123})
+            url = ep.call_url({"country": "germany", "id": 123})
             # "https://api.example.com/v1/users/germany/123?limit=10"
         """
         self._require_client()
@@ -175,6 +178,9 @@ class Endpoint:
         if req_params:
             url = f"{url}?{urlencode(req_params)}"
         return url
+
+    # Backwards-compatible alias
+    fetch_url = call_url
 
     @property
     def url_template(self) -> str:
