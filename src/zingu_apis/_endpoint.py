@@ -171,7 +171,7 @@ class Endpoint:
         self._require_client()
         path, query_params = self._resolve(api_params)
 
-        url = f"{self._client.base_url}/{path.lstrip('/')}"
+        url = self._client._build_url(path)
 
         # Apply auth and merge query params
         req_params, _ = self._client._prepare_request(query_params)

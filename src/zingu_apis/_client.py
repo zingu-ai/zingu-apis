@@ -130,8 +130,21 @@ class APIClient:
         self.slug = self.meta.slug  # canonical ID (resolved from short slug)
         self.base_url = self.meta.base_url.rstrip("/")
         self._session = requests.Session()
+        # Extract the path portion of base_url for overlap detection
+        from urllib.parse import urlparse
+        self._base_path = urlparse(self.base_url).path.rstrip("/")
         self._auth = resolve_auth(self.slug, self.meta.auth_type, key=key)
         self._parser = parser  # callable(text) -> parsed data
+
+    def _build_url(self, path: str) -> str:
+        """Build full URL, stripping overlapping path prefix between base_url and path."""
+        clean = path.lstrip("/")
+        # If path starts with the same prefix as base_url's path, strip the overlap
+        # e.g. base_url=https://host/v3, path=/v3/beers -> https://host/v3/beers (not /v3/v3/beers)
+        if self._base_path and clean.startswith(self._base_path.lstrip("/") + "/"):
+            clean = clean[len(self._base_path.lstrip("/")):]
+            clean = clean.lstrip("/")
+        return f"{self.base_url}/{clean}"
 
     def _normalize_endpoint_name(self, path: str) -> str:
         """Convert endpoint path to valid Python identifier.
@@ -501,7 +514,7 @@ them as a list of dicts with name and type information.
     def get(self, path: str, **params: Any) -> Any:
         """Make a single GET request (no pagination)."""
         ep = self.meta.find_endpoint(path)
-        url = f"{self.base_url}/{path.lstrip('/')}"
+        url = self._build_url(path)
         params, headers = self._prepare_request(params)
         resp = self._session.get(url, params=params, headers=headers, timeout=15)
         resp.raise_for_status()
@@ -513,7 +526,7 @@ them as a list of dicts with name and type information.
         Use for endpoints that return binary content (images, PDFs, etc.)
         instead of structured data.
         """
-        url = f"{self.base_url}/{path.lstrip('/')}"
+        url = self._build_url(path)
         params, headers = self._prepare_request(params)
         resp = self._session.get(url, params=params, headers=headers, timeout=timeout)
         resp.raise_for_status()
@@ -600,7 +613,7 @@ them as a list of dicts with name and type information.
         t_start = time.monotonic()
         page_timings: list[float] = []
 
-        url = f"{self.base_url}/{path.lstrip('/')}"
+        url = self._build_url(path)
 
         try:
             # First page
