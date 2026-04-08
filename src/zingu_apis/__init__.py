@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import os
+from importlib.metadata import version as _pkg_version
 from typing import Any, Literal
+
+__version__ = _pkg_version("zingu-apis")
 
 from ._client import APIClient
 from ._endpoint import Endpoint
@@ -16,6 +19,7 @@ ZINGU_WEB_HOME_URL: str = os.environ.get("ZINGU_WEB_HOME_URL", "https://zingu.ai
 ZINGU_API_BASE_URL: str = os.environ.get("ZINGU_API_BASE_URL", "https://zingu.ai/api")
 
 __all__ = [
+    "__version__",
     "api", "call", "fetch", "search", "configure", "APIClient", "Endpoint", "Parameter", "FetchError",
     "prune", "PruneProfile", "PRUNE_PRINT", "PRUNE_COMPACT", "PRUNE_SAFE", "PRUNE_NONE",
     "ZINGU_WEB_HOME_URL", "ZINGU_API_BASE_URL",
