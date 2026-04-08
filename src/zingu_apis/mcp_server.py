@@ -148,8 +148,19 @@ async def _handle_search_apis(arguments: dict) -> list[TextContent]:
     limit = arguments.get("limit", 10)
     results = zingu_apis.search(query, limit=limit)
     if not results:
-        return _json_text({"results": [], "message": f"No APIs found for '{query}'"})
-    return _json_text({"results": results, "count": len(results)})
+        return _json_text({"results": [], "message": f"No APIs found for '{query}'. Try broader keywords or check https://zingu.ai/apis for the full catalog."})
+    # Check if results are actually suggestions (unverified matches)
+    if all(r.get("_suggestion") for r in results):
+        message = results[0].get("_message", "")
+        clean = [{k: v for k, v in r.items() if not k.startswith("_")} for r in results]
+        return _json_text({
+            "results": [],
+            "suggestions": clean,
+            "message": message or f"No verified APIs found for '{query}', but similar unverified APIs exist. Use the slug from suggestions with api_info to check availability.",
+        })
+    # Strip internal markers from normal results
+    clean = [{k: v for k, v in r.items() if not k.startswith("_")} for r in results]
+    return _json_text({"results": clean, "count": len(clean)})
 
 
 async def _handle_api_info(arguments: dict) -> list[TextContent]:
