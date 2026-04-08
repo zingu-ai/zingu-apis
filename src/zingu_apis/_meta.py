@@ -114,7 +114,16 @@ def search(query: str, limit: int = 10) -> list[dict]:
         data = resp.json()
         if isinstance(data, list):
             return data
-        return data.get("results", [])
+        # Server may return {results: [], suggestions: [...], message: "..."}
+        results = data.get("results", [])
+        if not results and data.get("suggestions"):
+            # Return suggestions with a marker so callers know these aren't verified
+            return [{
+                **s,
+                "_suggestion": True,
+                "_message": data.get("message", ""),
+            } for s in data["suggestions"]]
+        return results
     except (requests.RequestException, ValueError, KeyError) as exc:
         logger.debug("Zingu search failed for %r: %s", query, exc)
         return []
