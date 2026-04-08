@@ -124,6 +124,9 @@ def search(query: str, limit: int = 10) -> list[dict]:
                 "_message": data.get("message", ""),
             } for s in data["suggestions"]]
         return results
+    except requests.ConnectionError as exc:
+        logger.warning("Cannot reach Zingu API at %s — no internet access? Use the REST API directly: GET %s/search?q=%s", _ZINGU_BASE, _ZINGU_BASE, query)
+        return [{"_error": True, "message": f"Cannot reach Zingu API. If running in a sandboxed environment, use the REST API directly: GET {_ZINGU_BASE}/search?q={query}"}]
     except (requests.RequestException, ValueError, KeyError) as exc:
         logger.debug("Zingu search failed for %r: %s", query, exc)
         return []
